@@ -336,7 +336,7 @@ void handle_response(char *request, int client_sock)
         printf("DEBUG: %d\n", num_chats);
         for (int i = 0; i < num_chats; i++)
         {
-            printf("Chat %d: %s: %s\n", i, chats[i].user, chats[i].message);
+            printf("Chat idx: %d, user: %s, msg: %s, id: %d\n", i, chats[i].user, chats[i].message, chats[i].id);
             printf("Reaction Messages: \n");
             if (chats[i].num_reactions == 0)
             {
@@ -350,76 +350,70 @@ void handle_response(char *request, int client_sock)
         }
     }
     else if (strcmp(endpoint, reactstr) == 0)
-    {
-        printf("/react\n");
-        // TODO: parse username, reaction message, and id out of the path e.g. /react?user=<username>&message=<reaction>&id=<id>
-        // TODO: use this add_reaction function
-        // add_reaction(chat, "JohnSmith", "Great message!");
-        char user[256];
-        char *user_start = query_start + 6;       // should start after =, point to j
-        char *user_end = strstr(user_start, "&"); // should point to &, end before it reaches
-        int user_len = user_end - user_start;
-        if (user_len < 1)
-        {
-            printf("Username length was less than 1 character long \n");
-            handle_404(client_sock, path);
-            return;
-        }
-        strncpy(user, user_start, user_len);
-        user[user_len] = '\0';
+   {
+    printf("/react\n");
 
-        char message[256];
-        char *message_start = user_end + 9;             // should point to right after =
-        char *message_end = strstr(message_start, "&"); // should point to &, end before it reaches
-        int message_len = message_end - message_start;
-        if (message_len < 1)
-        {
-            printf("Message length was less than 1 character long \n");
-            handle_404(client_sock, path);
-            return;
-        }
-        strncpy(message, message_start, message_len);
-        message[message_len] = '\0';
-
-        char id[256];
-        char *id_start = message_end + 4;
-        int id_len = 0;
-        char *id_count = id_start;
-        while (*id_count != '\0')
-        {
-            id_len++;
-            id_count++;
-        }
-        if (id_len < 1)
-        {
-            printf("id length was less than 1 character long \n");
-            handle_404(client_sock, path);
-            return;
-        }
-        strncpy(id, id_start, id_len);
-        id[id_len] = '\0';
-
-        printf("Name: %s, Message: %s, id: %s\n", user, message, id);
-
-        // WE can easily check whehter an id is valid, by seeing if it is within the range of our array numbers
-        if (atoi(id) <= 0 || atoi(id) > num_chats)
-        {
-            printf("id: %s num_chat: %s ", id, num_chats);
-            handle_500(client_sock, path);
-            return;
-        }
-
-        // BEFORE reallocating, make sure we are under the correct constraints. Do NOT reallocate if we are... at the max already
-        if ((chats[atoi(id) - 1]).num_reactions + 1 > max_reactions)
-        {
-            printf("id: %s num_chat: %s ", id, num_chats);
-            handle_500(client_sock, request);
-            return;
-        }
-        // NOW let's put reaction into chats
-        // Study notes: Why use "&"?
-        add_reaction(&chats[atoi(id) - 1], user, message);
+    // Extract user parameter
+    char user[256];
+    char *user_start = query_start + 6;       // After "user="
+    char *user_end = strstr(user_start, "&");
+    if (user_end == NULL) {
+        printf("Error: 'user' parameter missing or incorrectly formatted in /react path\n");
+        handle_404(client_sock, path);
+        return;
     }
+    int user_len = user_end - user_start;
+    if (user_len < 1 || user_len >= 256) {
+        printf("Error: 'user' parameter length invalid (0 or exceeds 255 characters)\n");
+        handle_404(client_sock, path);
+        return;
+    }
+    strncpy(user, user_start, user_len);
+    user[user_len] = '\0';
+
+    // Extract message parameter
+    char message[256];
+    char *message_start = user_end + 9; // After "message="
+    char *message_end = strstr(message_start, "&");
+    int message_len;
+    if (message_end == NULL) {
+        message_len = strlen(message_start); // Message is at the end of URL
+    } else {
+        message_len = message_end - message_start;
+    }
+    if (message_len < 1 || message_len >= 256) {
+        printf("Error: 'message' parameter length invalid (0 or exceeds 255 characters)\n");
+        handle_404(client_sock, path);
+        return;
+    }
+    strncpy(message, message_start, message_len);
+    message[message_len] = '\0';
+
+    // Extract id parameter
+    char *id_start = message_end ? message_end + 4 : NULL; // After "id="
+    if (id_start == NULL || strlen(id_start) == 0) {
+        printf("Error: 'id' parameter missing or incorrectly formatted in /react path\n");
+        handle_404(client_sock, path);
+        return;
+    }
+    int id = atoi(id_start);
+    if (id <= 0 || id > num_chats) {
+        printf("Error: 'id' parameter out of valid range. id: %d, num_chats: %u\n", id, num_chats);
+        handle_500(client_sock, path);
+        return;
+    }
+
+    // Check reaction limit for the chat
+    if (chats[id - 1].num_reactions >= max_reactions) {
+        printf("Error: Exceeded maximum reactions for chat ID %d\n", id);
+        handle_500(client_sock, path);
+        return;
+    }
+
+    // Add reaction
+    add_reaction(&chats[id - 1], user, message);
+    printf("Reaction added: User: %s, Message: %s, Chat ID: %d\n", user, message, id);
+}
     else if (strcmp(endpoint, resetstr) == 0)
     {
         printf("/reset\n");
