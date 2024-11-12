@@ -321,6 +321,7 @@ void handle_response(char *request, int client_sock)
         // IF MAX CHATS REACHED, RETURN
         if (num_chats + 1 > max_chats)
         {
+            printf("maxchat: %s num_chat: %s ", max_chats, num_chats);
             handle_500(client_sock, request);
             return;
         }
@@ -403,6 +404,7 @@ void handle_response(char *request, int client_sock)
         // WE can easily check whehter an id is valid, by seeing if it is within the range of our array numbers
         if (atoi(id) <= 0 || atoi(id) > num_chats)
         {
+            printf("id: %s num_chat: %s ", id, num_chats);
             handle_500(client_sock, path);
             return;
         }
@@ -410,6 +412,7 @@ void handle_response(char *request, int client_sock)
         // BEFORE reallocating, make sure we are under the correct constraints. Do NOT reallocate if we are... at the max already
         if ((chats[atoi(id) - 1]).num_reactions + 1 > max_reactions)
         {
+            printf("id: %s num_chat: %s ", id, num_chats);
             handle_500(client_sock, request);
             return;
         }
@@ -424,7 +427,6 @@ void handle_response(char *request, int client_sock)
         chats = NULL;
 
         num_chats = 0;
-        handle_404(client_sock, path);
     }
     else
     {
