@@ -1,7 +1,7 @@
 
 #include "http-server.h"
 
-void start_server(void (*handler)(char *, int), int port)
+void start_server(void (*handler)(char *, int, Chat **, uint32_t *), int port, Chat **chats, uint32_t *num_chats)
 {
     int server_sock, client_sock;
     struct sockaddr_in server_addr, client_addr;
@@ -70,7 +70,7 @@ void start_server(void (*handler)(char *, int), int port)
         assert(num_read <= BUFFER_SIZE - 1);
         buffer[num_read] = '\0';
 
-        (*handler)(buffer, client_sock);
+        (*handler)(buffer, client_sock, chats, num_chats);
 
         // Close the connection with the client
         close(client_sock);
