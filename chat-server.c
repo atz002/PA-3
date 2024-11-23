@@ -368,6 +368,35 @@ int main(int argc, char *argv[])
     Chat *chats = NULL;
     uint32_t num_chats = 0;
 
+    // Create study notes for the below code
+    // Study note: malloc is used to allocate memory for the Chat struct
+    // Study note: calloc is used to allocate memory for the user and message strings
+    // Study note: malloc is used to allocate memory for the timestamp string
+    // Study note: malloc is used to allocate memory for the reactions array
+    // Study note: calloc is used to allocate memory for the reaction strings
+    // Study note: You need to allocate memory for the struct itself
+    // first because it serves as the container that holds pointers to the other memory blocks.
+    // If you don't allocate memory for the struct itself, the pointers within it don’t exist
+    // in a valid memory space, so accessing or assigning them directly will result in undefined behavior, often causing segmentation faults or crashes.
+    /* CODE EXAMPLE:
+            Chat *chats = malloc(sizeof(Chat) * 1);
+            chats[0].id = 1;
+            chats[0].user = calloc(16, sizeof(char));  // Specify sizeof(char) for clarity
+            chats[0].message = calloc(256, sizeof(char));  // Specify sizeof(char) for clarity
+            chats[0].timestamp = malloc(TIMESTAMP_LENGTH * sizeof(char));
+            chats[0].num_reactions = 0;
+            chats[0].reactions = NULL;  // Start with NULL if no reactions are needed initially
+    */
+
+  typedef struct person {
+      char* name;
+      int age;
+  } person;
+  person* students = (struct person*)malloc(sizeof(struct person) * 10);
+  students[0].name = (char*)calloc(16, sizeof(char));
+  students[0].age = 10;
+
+
     start_server(handle_response, port, &chats, &num_chats);
 
     free_chats(chats, num_chats);
