@@ -7,7 +7,6 @@
 #include <ctype.h>
 #include "chats.h"
 
-
 char const HTTP_404_NOT_FOUND[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n";
 char const HTTP_200_OK[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 #define TIMESTAMP_LENGTH 20 // "YYYY-MM-DD HH:MM:SS" + 1 (null char)
@@ -15,17 +14,24 @@ char const HTTP_200_OK[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n"
 uint32_t max_reactions = 100;
 uint32_t max_chats = 100000;
 
-void url_decode(char *dest, const char *src) {
+void url_decode(char *dest, const char *src)
+{
     printf("src: %s\n", src);
-    while (*src) {
-        if (*src == '%' && isxdigit(*(src + 1)) && isxdigit(*(src + 2))) {
-            char hex[3] = { *(src + 1), *(src + 2), '\0' };
+    while (*src)
+    {
+        if (*src == '%' && isxdigit(*(src + 1)) && isxdigit(*(src + 2)))
+        {
+            char hex[3] = {*(src + 1), *(src + 2), '\0'};
             *dest++ = (char)strtol(hex, NULL, 16);
             src += 3;
-        } else if (*src == '+') {
+        }
+        else if (*src == '+')
+        {
             *dest++ = ' ';
             src++;
-        } else {
+        }
+        else
+        {
             *dest++ = *src++;
         }
     }
@@ -49,13 +55,15 @@ void handle_404(int client_sock, char *path)
     // TODO: send response back to client?
     write(client_sock, response_buff, strlen(response_buff));
 }
-void handle_chat_response(int client_sock, Chat *chats, uint32_t num_chats) {
+void handle_chat_response(int client_sock, Chat *chats, uint32_t num_chats)
+{
     // Write the HTTP header directly to the client
     const char *header = HTTP_200_OK;
     write(client_sock, header, strlen(header));
 
     // Iterate over each chat message and write it to the client
-    for (uint32_t i = 0; i < num_chats; i++) {
+    for (uint32_t i = 0; i < num_chats; i++)
+    {
         Chat *chat = &chats[i];
 
         // Format the main chat message
@@ -68,7 +76,8 @@ void handle_chat_response(int client_sock, Chat *chats, uint32_t num_chats) {
         write(client_sock, chat_message, message_len);
 
         // Iterate over each reaction and write it to the client
-        for (int j = 0; j < chat->num_reactions; j++) {
+        for (int j = 0; j < chat->num_reactions; j++)
+        {
             Reaction *reaction = &chat->reactions[j];
 
             // Format the reaction message
@@ -111,20 +120,23 @@ void add_timestamp_to_chat(Chat *chat)
     char temp_timestamp[TIMESTAMP_LENGTH];
 
     // Get the current time and check for errors
-    if (time(&raw_time) == -1) {
+    if (time(&raw_time) == -1)
+    {
         perror("time() failed");
         exit(1);
     }
 
     // Convert to local time and check for errors
     time_info = localtime(&raw_time);
-    if (time_info == NULL) {
+    if (time_info == NULL)
+    {
         perror("localtime() failed");
         exit(1);
     }
 
     // Format timestamp and check for success
-    if (strftime(temp_timestamp, sizeof(temp_timestamp), "%Y-%m-%d %H:%M:%S", time_info) == 0) {
+    if (strftime(temp_timestamp, sizeof(temp_timestamp), "%Y-%m-%d %H:%M:%S", time_info) == 0)
+    {
         fprintf(stderr, "strftime() failed to format time\n");
         exit(1);
     }
@@ -134,7 +146,8 @@ void add_timestamp_to_chat(Chat *chat)
 
     // Allocate memory for timestamp in Chat struct and check for success
     chat->timestamp = malloc(strlen(temp_timestamp) + 1);
-    if (chat->timestamp == NULL) {
+    if (chat->timestamp == NULL)
+    {
         perror("malloc() failed");
         exit(1);
     }
@@ -174,7 +187,8 @@ void add_new_chat(Chat **chats, uint32_t *num_chats, const char *user, const cha
     // Study note: MAYBE you need to know perror and exit.
 
     *chats = realloc(*chats, (*num_chats + 1) * sizeof(Chat));
-    if (*chats == NULL) {
+    if (*chats == NULL)
+    {
         perror("Failed to allocate memory for chats");
         exit(1);
     }
@@ -227,7 +241,8 @@ void free_chats(Chat *chats, uint32_t num_chats)
     free(chats); // Free the array of Chat structs
 }
 
-void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num_chats) {
+void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num_chats)
+{
     char path[256];
     printf("SERVER LOG: Received request: \"%s\"\n", request);
 
@@ -241,14 +256,16 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
     // Parse the path out of the request line
     char *start_of_path = request + 4;
     char *end_of_path = strstr(start_of_path, " HTTP/1.1");
-    if (end_of_path == NULL) {
+    if (end_of_path == NULL)
+    {
         printf("SERVER LOG: Invalid request line\n");
         handle_404(client_sock, path);
         return;
     }
 
     int path_length = end_of_path - start_of_path;
-    if (path_length >= sizeof(path) - 1) {
+    if (path_length >= sizeof(path) - 1)
+    {
         printf("SERVER LOG: Path too long\n");
         handle_404(client_sock, path);
         return;
@@ -268,7 +285,8 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
     const char *poststr = "/post";
     const char *reactstr = "/react";
 
-    if (strcmp(endpoint, poststr) == 0) {
+    if (strcmp(endpoint, poststr) == 0)
+    {
 
         // uses malloc to increase the size of the amount of
         // chat messages using the Chat struct each time a new
@@ -276,22 +294,49 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
         // Safely parse user and message parameters
         char user[256] = {0}, message[256] = {0};
 
-        if (query_start) {
+        if (query_start)
+        {
             char *user_start = strstr(query_start, "user=");
             char *message_start = strstr(query_start, "&message=");
 
-            if (user_start && message_start) {
+            if (user_start && message_start)
+            {
                 user_start += 5;
                 int user_len = message_start - user_start;
-                if (user_len > 0 && user_len < sizeof(user)) {
+                if (user_len > 15)
+                {
+                    printf("SERVER LOG: Username is greater than 15\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+                if (user_len > 0 && user_len < sizeof(user))
+                {
                     strncpy(user, user_start, user_len);
                     user[user_len] = '\0';
                 }
 
                 message_start += 9;
-                strncpy(message, message_start, sizeof(message) - 1);
-                message[sizeof(message) - 1] = '\0';
-            } else {
+                if (end_of_path == NULL || message_start == NULL)
+                {
+                    printf("SERVER LOG: Invalid pointers for message parsing\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+                if (message_start > end_of_path)
+                {
+                    printf("SERVER LOG: Invalid pointer range for message parsing\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+                int message_len = end_of_path - message_start;
+                if (message_len > 0 && message_len < sizeof(message))
+                {
+                    strncpy(message, message_start, message_len);
+                    message[message_len] = '\0';
+                }
+            }
+            else
+            {
                 printf("SERVER LOG: Missing parameters in POST request\n");
                 handle_404(client_sock, path);
                 return;
@@ -307,34 +352,78 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
         printf("SERVER LOG: Added new chat. Total chats: %u\n", *num_chats);
         handle_chat_response(client_sock, *chats, *num_chats);
     }
-    else if (strcmp(endpoint, reactstr) == 0) {
+    else if (strcmp(endpoint, reactstr) == 0)
+    {
+        // printf("SERVER LOG: Got request for path \"%s\"\n", request);
+        // example of request
+        // GET /post?user=joe&message=hi aaron HTTP/1.1
+        // curl -s localhost:30000/react?user=Aaron&message=...&id=3
+        // User-Agent: curl/7.29.0
+        // Host: ieng6-201:8080
+        // Accept: */*
+
         // Safely parse user, message, and ID parameters
         char user[256] = {0}, message[256] = {0};
         int id = -1;
 
-        if (query_start) {
+        if (query_start)
+        {
             char *user_start = strstr(query_start, "user=");
             char *message_start = strstr(query_start, "&message=");
             char *id_start = strstr(query_start, "&id=");
 
-            if (user_start && message_start && id_start) {
+            if (user_start && message_start && id_start)
+            {
                 user_start += 5;
                 int user_len = message_start - user_start;
-                if (user_len > 0 && user_len < sizeof(user)) {
+
+                if (user_len > 15)
+                {
+                    printf("SERVER LOG: Username length is greater than 15\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+
+                if (user_len > 0 && user_len < sizeof(user))
+                {
                     strncpy(user, user_start, user_len);
                     user[user_len] = '\0';
                 }
 
                 message_start += 9;
+
+                if (end_of_path == NULL || message_start == NULL)
+                {
+                    printf("SERVER LOG: Invalid pointers for message parsing\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+                if (message_start > end_of_path)
+                {
+                    printf("SERVER LOG: Invalid pointer range for message parsing\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+
                 int message_len = id_start - message_start;
-                if (message_len > 0 && message_len < sizeof(message)) {
+
+                if (message_len > 15)
+                {
+                    printf("SERVER LOG: Message length is greater than 15\n");
+                    handle_404(client_sock, path);
+                    return;
+                }
+                if (message_len > 0 && message_len < sizeof(message))
+                {
                     strncpy(message, message_start, message_len);
                     message[message_len] = '\0';
                 }
 
                 id_start += 4;
                 id = atoi(id_start);
-            } else {
+            }
+            else
+            {
                 printf("SERVER LOG: Missing parameters in REACT request\n");
                 handle_404(client_sock, path);
                 return;
@@ -345,8 +434,16 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
         url_decode(message, message);
         printf("SERVER LOG: Decoded user \"%s\", message \"%s\", and ID %d\n", user, message, id);
 
-        if (id <= 0 || id > *num_chats) {
+        if (id <= 0 || id > *num_chats)
+        {
             printf("SERVER LOG: Invalid ID %d in REACT request\n", id);
+            handle_404(client_sock, path);
+            return;
+        }
+
+        if ((*chats)[id - 1].num_reactions + 1 > 100)
+        {
+            printf("SERVER LOG: Number of reactions exceed 100\n", id);
             handle_404(client_sock, path);
             return;
         }
@@ -355,12 +452,12 @@ void handle_response(char *request, int client_sock, Chat **chats, uint32_t *num
         printf("SERVER LOG: Added reaction to chat ID %d. Total reactions for chat %d: %u\n", id, id, (*chats)[id - 1].num_reactions);
         handle_chat_response(client_sock, *chats, *num_chats);
     }
-    else {
+    else
+    {
         printf("SERVER LOG: Unrecognized path \"%s\"\n", path);
         handle_404(client_sock, path);
     }
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -388,14 +485,14 @@ int main(int argc, char *argv[])
             chats[0].reactions = NULL;  // Start with NULL if no reactions are needed initially
     */
 
-  typedef struct person {
-      char* name;
-      int age;
-  } person;
-  person* students = (struct person*)malloc(sizeof(struct person) * 10);
-  students[0].name = (char*)calloc(16, sizeof(char));
-  students[0].age = 10;
-
+    typedef struct person
+    {
+        char *name;
+        int age;
+    } person;
+    person *students = (struct person *)malloc(sizeof(struct person) * 10);
+    students[0].name = (char *)calloc(16, sizeof(char));
+    students[0].age = 10;
 
     start_server(handle_response, port, &chats, &num_chats);
 

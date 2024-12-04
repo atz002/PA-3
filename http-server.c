@@ -1,6 +1,12 @@
 
 #include "http-server.h"
 
+/**
+ * @param void *handler
+ * @param int port
+ * @param Char **chat
+ * @param uint32_t *num_chars
+ */
 void start_server(void (*handler)(char *, int, Chat **, uint32_t *), int port, Chat **chats, uint32_t *num_chats)
 {
     int server_sock, client_sock;
